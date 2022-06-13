@@ -1,0 +1,51 @@
+[[linter]]
+code = 'CLANGFORMAT'
+include_patterns = [
+    'include/*.cuh',
+    'include/*.cu',
+    '*.cuh',
+    '*.cu'
+]
+init_command = [
+    'python3',
+    'linter/s3_init.py',
+    '--config-json=linter/s3_init_config.json',
+    '--linter=clang-format',
+    '--dry-run={{DRYRUN}}',
+    '--output-dir=.lintbin',
+    '--output-name=clang-format',
+]
+command = [
+    'python3',
+    'linter/clangformat_linter.py',
+    '--binary=.lintbin/clang-format',
+    '--',
+    '@{{PATHSFILE}}'
+]
+is_formatter = true
+
+[[linter]]
+code = 'CLANGTIDY'
+include_patterns = [
+    'include/*.cuh',
+    'include/*.cu',
+    '*.cuh',
+    '*.cu'
+]
+init_command = [
+    'python3',
+    'linter/s3_init.py',
+    '--config-json=linter/s3_init_config.json',
+    '--linter=clang-tidy',
+    '--dry-run={{DRYRUN}}',
+    '--output-dir=.lintbin',
+    '--output-name=clang-tidy',
+]
+command = [
+    'python3',
+    'linter/clangtidy_linter.py',
+    '--binary=.lintbin/clang-tidy',
+    '--build_dir=./build',
+    '--',
+    '@{{PATHSFILE}}'
+]
