@@ -1,6 +1,6 @@
-#include "./include/kernel1_naive.cuh"
 #include "./include/kernel10.cuh"
 #include "./include/kernel11.cuh"
+#include "./include/kernel1_naive.cuh"
 #include "./include/kernel2_smem_tile.cuh"
 #include "./include/kernel3_flat_cta.cuh"
 #include "./include/kernel4.cuh"

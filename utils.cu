@@ -28,7 +28,7 @@ void print_matrix(const float *A, int m, int n) {
 }
 
 void randomize_matrix(float *mat, int N) {
-  srand(time(NULL));
+  srand(time(nullptr));
   int i;
   for (i = 0; i < N; i++) {
     float tmp = (float)(rand() % 5) + 0.01 * (rand() % 5);
@@ -40,7 +40,7 @@ void randomize_matrix(float *mat, int N) {
 
 double get_sec() {
   struct timeval time;
-  gettimeofday(&time, NULL);
+  gettimeofday(&time, nullptr);
   return (time.tv_sec + 1e-6 * time.tv_usec);
 }
 
@@ -70,33 +70,6 @@ void test_cublas(cublasHandle_t err, int M, int N, int K, float alpha, float *A,
   cudaDeviceSynchronize();
   cublasSgemm(err, CUBLAS_OP_N, CUBLAS_OP_N, M, N, K, &alpha, A, M, B, K, &beta,
               C, M);
-  cudaDeviceSynchronize();
-}
-
-void test_mysgemm_v1(int M, int N, int K, float alpha, float *A, float *B,
-                     float beta, float *C) {
-  cudaDeviceSynchronize();
-  dim3 blockDim(32, 32);
-  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
-  mysgemm_v1<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
-  cudaDeviceSynchronize();
-}
-
-void test_mysgemm_v2(int M, int N, int K, float alpha, float *A, float *B,
-                     float beta, float *C) {
-  cudaDeviceSynchronize();
-  dim3 blockDim(32, 32);
-  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
-  mysgemm_v2<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
-  cudaDeviceSynchronize();
-}
-
-void test_mysgemm_v3(int M, int N, int K, float alpha, float *A, float *B,
-                     float beta, float *C) {
-  cudaDeviceSynchronize();
-  dim3 blockDim(1024);
-  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
-  mysgemm_v3<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   cudaDeviceSynchronize();
 }
 

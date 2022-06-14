@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+
+#define CEIL_DIV(m, n) ((m) + (n)-1) / (n)
+
 #define A(i, j) A[(i) + (j)*lda]
 #define B(i, j) B[(i) + (j)*ldb]
 #define C(i, j) C[(i) + (j)*ldc]
@@ -23,4 +26,13 @@ __global__ __launch_bounds__(1024) void mysgemm_v1(int M, int N, int K,
     c_accum += A(tx, kdx) * B(kdx, ty);
   }
   C(tx, ty) = alpha * c_accum + beta * C(tx, ty);
+}
+
+void test_mysgemm_v1(int M, int N, int K, float alpha, float *A, float *B,
+                     float beta, float *C) {
+  cudaDeviceSynchronize();
+  dim3 blockDim(32, 32);
+  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
+  mysgemm_v1<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+  cudaDeviceSynchronize();
 }

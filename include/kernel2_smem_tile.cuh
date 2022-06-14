@@ -1,13 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define A(i, j) A[(i) + (j)*lda]
-#define B(i, j) B[(i) + (j)*ldb]
-#define C(i, j) C[(i) + (j)*ldc]
-#define smemA(i, j) smem_A[((i) << 5) + (j)]
-#define smemB(i, j) smem_B[((i) << 5) + (j)]
+
 #define MS 32
 #define NS 32
 #define KS 32
+
+#define CEIL_DIV(m, n) ((m) + (n)-1) / (n)
+
+#define A(i, j) A[(i) + (j)*lda]
+#define B(i, j) B[(i) + (j)*ldb]
+#define C(i, j) C[(i) + (j)*ldc]
+
+#define smemA(i, j) smem_A[((i) << 5) + (j)]
+#define smemB(i, j) smem_B[((i) << 5) + (j)]
+
 // cache blocking version, without register-level data re-use
 __global__ __launch_bounds__(1024) void mysgemm_v2(int M, int N, int K,
                                                    float alpha, float *A,
@@ -38,4 +44,13 @@ __global__ __launch_bounds__(1024) void mysgemm_v2(int M, int N, int K,
     __syncthreads();
   }
   C(tx, ty) = alpha * c_accum + beta * C(tx, ty);
+}
+
+void test_mysgemm_v2(int M, int N, int K, float alpha, float *A, float *B,
+                     float beta, float *C) {
+  cudaDeviceSynchronize();
+  dim3 blockDim(32, 32);
+  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
+  mysgemm_v2<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+  cudaDeviceSynchronize();
 }
