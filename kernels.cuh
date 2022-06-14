@@ -1,4 +1,6 @@
 #include "./include/kernel1.cuh"
+#include "./include/kernel10.cuh"
+#include "./include/kernel11.cuh"
 #include "./include/kernel2.cuh"
 #include "./include/kernel3.cuh"
 #include "./include/kernel4.cuh"
@@ -7,5 +9,3 @@
 #include "./include/kernel7.cuh"
 #include "./include/kernel8.cuh"
 #include "./include/kernel9.cuh"
-#include "./include/kernel10.cuh"
-#include "./include/kernel11.cuh"
