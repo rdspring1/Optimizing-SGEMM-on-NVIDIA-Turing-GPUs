@@ -11,13 +11,16 @@ __global__ __launch_bounds__(1024) void mysgemm_v1(int M, int N, int K,
                                                    float *C) {
   int lda = M, ldb = K, ldc = M;
   int tx = threadIdx.x, ty = threadIdx.y;
-  int bx = blockIdx.x, by = blockIdx.y;
-  A = &A((bx << 5), 0);
-  B = &B(0, (by << 5));
-  C = &C((bx << 5), (by << 5));
-  float tmp = 0.;
-  for (int k_count = 0; k_count < K; k_count++) {
-    tmp += A(tx, k_count) * B(k_count, ty);
+  int bx_shift = (blockIdx.x << 5);
+  int by_shift = (blockIdx.y << 5);
+
+  A = &A(bx_shift, 0);
+  B = &B(0, by_shift);
+  C = &C(bx_shift, by_shift);
+
+  float c_accum = 0.;
+  for (int kdx = 0; kdx < K; kdx++) {
+    c_accum += A(tx, kdx) * B(kdx, ty);
   }
-  C(tx, ty) = alpha * tmp + beta * C(tx, ty);
+  C(tx, ty) = alpha * c_accum + beta * C(tx, ty);
 }
