@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "helper_macros.cuh"
+#include "helper_fn.cuh"
 
 #define MS 32
 #define NS 32
@@ -21,32 +21,33 @@ __global__ __launch_bounds__(256) void mysgemm_v6(int M, int N, int K,
   int lda = M, ldb = K, ldc = M;
   int tx = threadIdx.x;
 
-  int row1 = (tx & 7) << 2;
-  int row2 = row1 + 1;
-  int row3 = row1 + 2;
-  int row4 = row1 + 3;
+  int row = (tx & 7) << 2;
   int col = tx >> 3;
 
   int bx_shift = (blockIdx.x << 5);
   int by_shift = (blockIdx.y << 5);
-  A = &A(bx_shift, 0);
-  B = &B(0, by_shift);
-  C = &C(bx_shift, by_shift);
+  A = &A[index(bx_shift, 0, lda)];
+  B = &B[index(0, by_shift, ldb)];
+  C = &C[index(bx_shift, by_shift, ldc)];
 
-  float4 a_vec, b_vec, c_vec, c_accum;
-  c_accum.x = 0., c_accum.y = 0., c_accum.z = 0., c_accum.w = 0.;
+  Array a_vec;
+  Array b_vec;
+  Array c_vec;
+  Array c_accum;
+  c_accum.set(0);
+
   float b_reg;
   for (int cta_k = 0; cta_k < K; cta_k += KS) {
-    vectorizeLoad(a_vec, &A(row1, col))
-    vectorizeLoad(b_vec, &B(row1, col))
+    a_vec = vectorizeLoad(&A[index(row, col, lda)]);
+    b_vec = vectorizeLoad(&B[index(row, col, ldb)]);
 
     // smem_A[tx] write 4 float values
-    ((float4 *)smem_A)[tx] = a_vec;
+    reinterpret_cast<Array *>(smem_A)[tx] = a_vec;
 
-    smemB(col, row1) = b_vec.x;
-    smemB(col, row2) = b_vec.y;
-    smemB(col, row3) = b_vec.z;
-    smemB(col, row4) = b_vec.w;
+#pragma unroll
+    for (int offset = 0; offset < FACTOR; offset++) {
+      smem_B[smemIndex(col, row + offset, 5)] = b_vec[offset];
+    }
 
     A += (lda << 5);
     B += 32;
@@ -54,29 +55,31 @@ __global__ __launch_bounds__(256) void mysgemm_v6(int M, int N, int K,
 
 #pragma unroll
     for (int warp_k = 0; warp_k < KS; warp_k++) {
-      b_reg = smemB(col, warp_k);
-      // smemA(warp_k, row1) read 4 float values
-      c_accum.x += smemA(warp_k, row1) * b_reg;
-      c_accum.y += smemA(warp_k, row2) * b_reg;
-      c_accum.z += smemA(warp_k, row3) * b_reg;
-      c_accum.w += smemA(warp_k, row4) * b_reg;
+      b_reg = smem_B[smemIndex(col, warp_k, 5)];
+
+// smemA(warp_k, row1) read 4 float values
+#pragma unroll FACTOR
+      for (int offset = 0; offset < FACTOR; offset++) {
+        c_accum[offset] +=
+            smem_A[smemFlipIndex(row + offset, warp_k, 5)] * b_reg;
+      }
     }
     __syncthreads();
   }
 
-  vectorizeLoad(c_vec, &C(row1, col)) c_accum.x =
-      alpha * c_accum.x + beta * c_vec.x;
-  c_accum.y = alpha * c_accum.y + beta * c_vec.y;
-  c_accum.z = alpha * c_accum.z + beta * c_vec.z;
-  c_accum.w = alpha * c_accum.w + beta * c_vec.w;
-  vectorizeStore(&C(row1, col), c_accum)
+  c_vec = vectorizeLoad(&C[index(row, col, ldc)]);
+#pragma unroll FACTOR
+  for (int offset = 0; offset < FACTOR; offset++) {
+    c_accum[offset] = alpha * c_accum[offset] + beta * c_vec[offset];
+  }
+  vectorizeStore(&C(row, col), c_accum);
 }
 
 void test_mysgemm_v6(int M, int N, int K, float alpha, float *A, float *B,
                      float beta, float *C) {
   cudaDeviceSynchronize();
   dim3 blockDim(256);
-  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
+  dim3 gridDim(ceilDiv(M, 32), ceilDiv(N, 32));
   mysgemm_v6<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   cudaDeviceSynchronize();
 }

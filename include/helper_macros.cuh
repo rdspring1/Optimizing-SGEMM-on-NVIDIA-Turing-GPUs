@@ -9,5 +9,5 @@
 #define smemA(i, j) smem_A[((i) << 5) + (j)]
 #define smemB(i, j) smem_B[((i) << 5) + (j)]
 
-#define vectorizeLoad(v1, addr) v1 = *((float4 *)(addr));
-#define vectorizeStore(addr, v1) *((float4 *)(addr)) = v1;
+#define vectorize_load(v1, addr) v1 = *((float4 *)(addr));
+#define vectorize_store(addr, v1) *((float4 *)(addr)) = v1;

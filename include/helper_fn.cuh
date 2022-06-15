@@ -14,10 +14,24 @@ __inline__ __device__ int smemFlipIndex(int i, int j, int shift) {
   return (j << shift) + i;
 }
 
-__inline__ __device__ float4 vectorizeLoad(float *addr) {
-  return *((float4 *)addr);
+// aligned register array for vectorized load/store
+struct alignas(sizeof(float) * 4) Array {
+  float array[4];
+
+  __device__ void set(float v) {
+#pragma unroll
+    for (int i = 0; i < 4; ++i) {
+      array[i] = v;
+    }
+  }
+
+  __device__ float &operator[](const unsigned int i) { return array[i]; }
+};
+
+__inline__ __device__ Array vectorizeLoad(float *addr) {
+  return reinterpret_cast<Array *>(addr)[0];
 }
 
-__inline__ __device__ void vectorizeLoad(float *addr, float4 value) {
-  *((float4 *)(addr)) = value;
+__inline__ __device__ void vectorizeStore(float *addr, Array value) {
+  reinterpret_cast<Array *>(addr)[0] = value;
 }
