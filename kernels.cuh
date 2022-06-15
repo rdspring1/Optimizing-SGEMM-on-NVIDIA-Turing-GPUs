@@ -4,7 +4,7 @@
 #include "./include/kernel2_smem_tile.cuh"
 #include "./include/kernel3_flat_cta.cuh"
 #include "./include/kernel4_tile_unroll.cuh"
-#include "./include/kernel6.cuh"
+#include "./include/kernel5_vectorize_load_store.cuh"
 #include "./include/kernel7.cuh"
 #include "./include/kernel8.cuh"
 #include "./include/kernel9.cuh"

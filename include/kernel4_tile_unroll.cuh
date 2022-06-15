@@ -7,9 +7,9 @@
 #define NS 32
 #define KS 32
 
-// cache blocking version, without register-level data re-use with memory
-// coelascing on shared memory. 4x1 micro kernel - compute more elements of C
-// per thread
+//! cache blocking version, without register-level data re-use with memory
+//! coelascing on shared memory.
+//!4x1 micro kernel - compute more elements of C per thread
 __global__ __launch_bounds__(256) void mysgemm_v4(int M, int N, int K,
                                                   float alpha, float *A,
                                                   float *B, float beta,
@@ -28,7 +28,6 @@ __global__ __launch_bounds__(256) void mysgemm_v4(int M, int N, int K,
 
   int bx_shift = (blockIdx.x << 5);
   int by_shift = (blockIdx.y << 5);
-
   A = &A(bx_shift, 0);
   B = &B(0, by_shift);
   C = &C(bx_shift, by_shift);
