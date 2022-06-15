@@ -1,18 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "helper_macros.cuh"
+
 #define MS 32
 #define NS 32
 #define KS 32
-
-#define CEIL_DIV(m, n) ((m) + (n)-1) / (n)
-
-#define A(i, j) A[(i) + (j)*lda]
-#define B(i, j) B[(i) + (j)*ldb]
-#define C(i, j) C[(i) + (j)*ldc]
-
-#define smemA(i, j) smem_A[((i) << 5) + (j)]
-#define smemB(i, j) smem_B[((i) << 5) + (j)]
 
 // cache blocking version, without register-level data re-use
 __global__ __launch_bounds__(1024) void mysgemm_v2(int M, int N, int K,

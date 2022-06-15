@@ -73,24 +73,6 @@ void test_cublas(cublasHandle_t err, int M, int N, int K, float alpha, float *A,
   cudaDeviceSynchronize();
 }
 
-void test_mysgemm_v4(int M, int N, int K, float alpha, float *A, float *B,
-                     float beta, float *C) {
-  cudaDeviceSynchronize();
-  dim3 blockDim(1024);
-  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
-  mysgemm_v4<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
-  cudaDeviceSynchronize();
-}
-
-void test_mysgemm_v5(int M, int N, int K, float alpha, float *A, float *B,
-                     float beta, float *C) {
-  cudaDeviceSynchronize();
-  dim3 blockDim(256);
-  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
-  mysgemm_v5<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
-  cudaDeviceSynchronize();
-}
-
 void test_mysgemm_v6(int M, int N, int K, float alpha, float *A, float *B,
                      float beta, float *C) {
   cudaDeviceSynchronize();
@@ -163,9 +145,9 @@ void test_kernel(int kernel_num, int m, int n, int k, float alpha, float *A,
   case 4:
     test_mysgemm_v4(m, n, k, alpha, A, B, beta, C);
     break;
-  case 5:
-    test_mysgemm_v5(m, n, k, alpha, A, B, beta, C);
-    break;
+  // case 5:
+  // test_mysgemm_v5(m, n, k, alpha, A, B, beta, C);
+  // break;
   case 6:
     test_mysgemm_v6(m, n, k, alpha, A, B, beta, C);
     break;

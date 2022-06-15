@@ -1,11 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define CEIL_DIV(m, n) ((m) + (n)-1) / (n)
-
-#define A(i, j) A[(i) + (j)*lda]
-#define B(i, j) B[(i) + (j)*ldb]
-#define C(i, j) C[(i) + (j)*ldc]
+#include "helper_macros.cuh"
 
 // naive version
 __global__ __launch_bounds__(1024) void mysgemm_v1(int M, int N, int K,
