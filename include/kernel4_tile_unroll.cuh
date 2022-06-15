@@ -9,7 +9,7 @@
 
 //! cache blocking version, without register-level data re-use with memory
 //! coelascing on shared memory.
-//!4x1 micro kernel - compute more elements of C per thread
+//! 4x1 micro kernel - compute more elements of C per thread
 __global__ __launch_bounds__(256) void mysgemm_v4(int M, int N, int K,
                                                   float alpha, float *A,
                                                   float *B, float beta,

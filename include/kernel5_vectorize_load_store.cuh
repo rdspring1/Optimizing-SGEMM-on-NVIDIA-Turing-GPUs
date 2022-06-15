@@ -37,8 +37,10 @@ __global__ __launch_bounds__(256) void mysgemm_v5(int M, int N, int K,
   c_accum.x = 0., c_accum.y = 0., c_accum.z = 0., c_accum.w = 0.;
   float b_reg;
   for (int cta_k = 0; cta_k < K; cta_k += KS) {
-    a_vec = *((float4 *)(&A(row1, col)));
-    b_vec = *((float4 *)(&B(row1, col)));
+    vectorizeLoad(a_vec, &A(row1, col))
+    vectorizeLoad(b_vec, &B(row1, col))
+
+    // smem_A[tx] write 4 float values
     ((float4 *)smem_A)[tx] = a_vec;
 
     smemB(col, row1) = b_vec.x;
@@ -53,6 +55,7 @@ __global__ __launch_bounds__(256) void mysgemm_v5(int M, int N, int K,
 #pragma unroll
     for (int warp_k = 0; warp_k < KS; warp_k++) {
       b_reg = smemB(col, warp_k);
+      // smemA(warp_k, row1) read 4 float values
       c_accum.x += smemA(warp_k, row1) * b_reg;
       c_accum.y += smemA(warp_k, row2) * b_reg;
       c_accum.z += smemA(warp_k, row3) * b_reg;
@@ -61,12 +64,12 @@ __global__ __launch_bounds__(256) void mysgemm_v5(int M, int N, int K,
     __syncthreads();
   }
 
-  c_vec = *((float4 *)(&C(row1, col)));
-  c_accum.x = alpha * c_accum.x + beta * c_vec.x;
+  vectorizeLoad(c_vec, &C(row1, col)) c_accum.x =
+      alpha * c_accum.x + beta * c_vec.x;
   c_accum.y = alpha * c_accum.y + beta * c_vec.y;
   c_accum.z = alpha * c_accum.z + beta * c_vec.z;
   c_accum.w = alpha * c_accum.w + beta * c_vec.w;
-  *(float4 *)(&(C(row1, col))) = c_accum;
+  vectorizeStore(&C(row1, col), c_accum)
 }
 
 void test_mysgemm_v5(int M, int N, int K, float alpha, float *A, float *B,
