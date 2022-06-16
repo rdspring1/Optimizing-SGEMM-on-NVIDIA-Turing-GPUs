@@ -11,7 +11,7 @@
 //! with memory coelascing on shared memory
 //! 4x1 micro kernel - compute more elements of C per thread
 //! vectorize load/store
-__global__ __launch_bounds__(256) void mysgemm_v5(int M, int N, int K,
+__global__ __launch_bounds__(256) void mysgemm_v6(int M, int N, int K,
                                                   float alpha, float *A,
                                                   float *B, float beta,
                                                   float *C) {
@@ -72,11 +72,11 @@ __global__ __launch_bounds__(256) void mysgemm_v5(int M, int N, int K,
   vectorizeStore(&C(row1, col), c_accum)
 }
 
-void test_mysgemm_v5(int M, int N, int K, float alpha, float *A, float *B,
+void test_mysgemm_v6(int M, int N, int K, float alpha, float *A, float *B,
                      float beta, float *C) {
   cudaDeviceSynchronize();
   dim3 blockDim(256);
   dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
-  mysgemm_v5<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+  mysgemm_v6<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   cudaDeviceSynchronize();
 }

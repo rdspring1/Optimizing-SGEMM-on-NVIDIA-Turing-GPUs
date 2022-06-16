@@ -138,12 +138,10 @@ void test_kernel(int kernel_num, int m, int n, int k, float alpha, float *A,
     break;
   case 5:
     test_mysgemm_v5(m, n, k, alpha, A, B, beta, C);
-  break;
-  /*
+    break;
   case 6:
     test_mysgemm_v6(m, n, k, alpha, A, B, beta, C);
     break;
-  */
   case 7:
     test_mysgemm_v7(m, n, k, alpha, A, B, beta, C);
     break;

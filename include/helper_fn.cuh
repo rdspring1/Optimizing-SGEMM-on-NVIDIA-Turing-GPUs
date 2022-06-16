@@ -10,6 +10,10 @@ __inline__ __device__ int smemIndex(int i, int j, int shift) {
   return (i << shift) + j;
 }
 
+__inline__ __device__ int smemFlipIndex(int i, int j, int shift) {
+  return (j << shift) + i;
+}
+
 __inline__ __device__ float4 vectorizeLoad(float *addr) {
   return *((float4 *)addr);
 }

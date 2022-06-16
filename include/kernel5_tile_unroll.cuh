@@ -12,7 +12,7 @@ constexpr int FACTOR = 4;
 //! cache blocking version, without register-level data re-use with memory
 //! coelascing on shared memory.
 //! 4x1 micro kernel - compute more elements of C per thread
-__global__ __launch_bounds__(256) void mysgemm_v4(int M, int N, int K,
+__global__ __launch_bounds__(256) void mysgemm_v5(int M, int N, int K,
                                                   float alpha, float *A,
                                                   float *B, float beta,
                                                   float *C) {
@@ -36,13 +36,13 @@ __global__ __launch_bounds__(256) void mysgemm_v4(int M, int N, int K,
   for (int k_count = 0; k_count < K; k_count += KS) {
 #pragma unroll FACTOR
     for (int offset = 0; offset < FACTOR; offset++) {
-      smem_A[smemIndex(row + offset, col, 5)] =
+      smem_A[smemFlipIndex(row + offset, col, 5)] =
           A[index(row + offset, col, lda)];
     }
 
 #pragma unroll FACTOR
     for (int offset = 0; offset < FACTOR; offset++) {
-      smem_B[smemIndex(col, row + offset, 5)] =
+      smem_B[smemFlipIndex(col, row + offset, 5)] =
           B[index(row + offset, col, ldb)];
     }
 
@@ -52,11 +52,12 @@ __global__ __launch_bounds__(256) void mysgemm_v4(int M, int N, int K,
 
 #pragma unroll
     for (int warp_k = 0; warp_k < KS; warp_k++) {
-      b_reg = smem_B[smemIndex(col, warp_k, 5)];
+      b_reg = smem_B[smemFlipIndex(col, warp_k, 5)];
 
 #pragma unroll FACTOR
       for (int offset = 0; offset < FACTOR; offset++) {
-        c_accum[offset] += smem_A[smemIndex(row + offset, warp_k, 5)] * b_reg;
+        c_accum[offset] +=
+            smem_A[smemFlipIndex(row + offset, warp_k, 5)] * b_reg;
       }
     }
     __syncthreads();
@@ -69,11 +70,11 @@ __global__ __launch_bounds__(256) void mysgemm_v4(int M, int N, int K,
   }
 }
 
-void test_mysgemm_v4(int M, int N, int K, float alpha, float *A, float *B,
+void test_mysgemm_v5(int M, int N, int K, float alpha, float *A, float *B,
                      float beta, float *C) {
   cudaDeviceSynchronize();
   dim3 blockDim(256);
   dim3 gridDim(ceilDiv(M, 32), ceilDiv(N, 32));
-  mysgemm_v4<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+  mysgemm_v5<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   cudaDeviceSynchronize();
 }
