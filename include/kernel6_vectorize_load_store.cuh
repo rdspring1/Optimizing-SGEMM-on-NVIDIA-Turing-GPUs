@@ -3,10 +3,6 @@
 
 #include "helper_fn.cuh"
 
-#define MS 32
-#define NS 32
-#define KS 32
-
 //! cache blocking version, without register-level data re-used
 //! with memory coelascing on shared memory
 //! 4x1 micro kernel - compute more elements of C per thread

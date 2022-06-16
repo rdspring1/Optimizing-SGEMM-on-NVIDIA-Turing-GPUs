@@ -3,10 +3,6 @@
 
 #include "helper_fn.cuh"
 
-#define MS 32
-#define NS 32
-#define KS 32
-
 // Column-Major Order
 // Row = idx & (Height-1) - Mod
 // Col = idx >> log2(Height) - Division

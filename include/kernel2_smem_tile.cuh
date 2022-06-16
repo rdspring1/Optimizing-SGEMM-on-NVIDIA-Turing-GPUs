@@ -3,10 +3,6 @@
 
 #include "helper_fn.cuh"
 
-#define MS 32
-#define NS 32
-#define KS 32
-
 // cache blocking version, without register-level data re-use
 __global__ __launch_bounds__(1024) void mysgemm_v2(int M, int N, int K,
                                                    float alpha, float *A,
