@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "helper_macros.cuh"
+#include "helper_fn.cuh"
 
 #define MS 32
 #define NS 32
@@ -21,36 +21,38 @@ __global__ __launch_bounds__(1024) void mysgemm_v3(int M, int N, int K,
 
   int lda = M, ldb = K, ldc = M;
   int tx = threadIdx.x;
-  int row = tx & 31, col = tx >> 5;
+  int row = tx & 31;
+  int col = tx >> 5;
+
   int bx_shift = (blockIdx.x << 5);
   int by_shift = (blockIdx.y << 5);
-
-  A = &A(bx_shift, 0);
-  B = &B(0, by_shift);
-  C = &C(bx_shift, by_shift);
+  A = &A[index(bx_shift, 0, lda)];
+  B = &B[index(0, by_shift, ldb)];
+  C = &C[index(bx_shift, by_shift, ldc)];
 
   float c_accum = 0.;
   for (int cta_k = 0; cta_k < K; cta_k += KS) {
-    smemA(row, col) = A(row, col);
-    smemB(col, row) = B(row, col);
+    smem_A[smemIndex(row, col, 5)] = A[index(row, col, lda)];
+    smem_B[smemIndex(col, row, 5)] = B[index(row, col, ldb)];
 
     A += (lda << 5);
     B += 32;
     __syncthreads();
 
     for (int warp_k = 0; warp_k < KS; warp_k++) {
-      c_accum += smemA(row, warp_k) * smemB(col, warp_k);
+      c_accum +=
+          smem_A[smemIndex(row, warp_k, 5)] * smem_B[smemIndex(col, warp_k, 5)];
     }
     __syncthreads();
   }
-  C(row, col) = alpha * c_accum + beta * C(row, col);
+  C[index(row, col, ldc)] = alpha * c_accum + beta * C[index(row, col, ldc)];
 }
 
 void test_mysgemm_v3(int M, int N, int K, float alpha, float *A, float *B,
                      float beta, float *C) {
   cudaDeviceSynchronize();
   dim3 blockDim(1024);
-  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
+  dim3 gridDim(ceilDiv(M, 32), ceilDiv(N, 32));
   mysgemm_v3<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   cudaDeviceSynchronize();
 }
