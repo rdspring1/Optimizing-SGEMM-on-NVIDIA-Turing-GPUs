@@ -1,4 +1,4 @@
-#include "./include/kernel10.cuh"
+#include "./include/kernel10_prefetching.cuh"
 #include "./include/kernel11.cuh"
 #include "./include/kernel1_naive.cuh"
 #include "./include/kernel2_smem_tile.cuh"

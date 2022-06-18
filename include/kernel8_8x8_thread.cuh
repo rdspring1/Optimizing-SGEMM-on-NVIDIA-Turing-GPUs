@@ -89,7 +89,8 @@ __global__ __launch_bounds__(256) void mysgemm_v8(int M, int N, int K,
     c_vec[offset] =
         vectorizeLoad(&C[index(row_c + row_offset, col_c + col_offset, ldc)]);
     axpby(c_accum[offset], alpha, c_accum[offset], beta, c_vec[offset]);
-    vectorizeStore(&C(row_c + row_offset, col_c + col_offset), c_accum[offset]);
+    vectorizeStore(&C[index(row_c + row_offset, col_c + col_offset, ldc)],
+                   c_accum[offset]);
   }
 }
 

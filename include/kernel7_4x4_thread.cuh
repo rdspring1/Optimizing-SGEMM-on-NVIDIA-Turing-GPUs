@@ -70,7 +70,7 @@ __global__ __launch_bounds__(256) void mysgemm_v7(int M, int N, int K,
   for (int offset = 0; offset < FACTOR; offset++) {
     c_vec[offset] = vectorizeLoad(&C[index(row_a, col_c + offset, ldc)]);
     axpby(c_accum[offset], alpha, c_accum[offset], beta, c_vec[offset]);
-    vectorizeStore(&C(row_a, col_c + offset), c_accum[offset]);
+    vectorizeStore(&C[index(row_a, col_c + offset, ldc)], c_accum[offset]);
   }
 }
 

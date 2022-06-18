@@ -68,7 +68,7 @@ __global__ __launch_bounds__(256) void mysgemm_v6(int M, int N, int K,
   for (int offset = 0; offset < FACTOR; offset++) {
     c_accum[offset] = alpha * c_accum[offset] + beta * c_vec[offset];
   }
-  vectorizeStore(&C(row, col), c_accum);
+  vectorizeStore(&C[index(row, col, ldc)], c_accum);
 }
 
 void test_mysgemm_v6(int M, int N, int K, float alpha, float *A, float *B,
