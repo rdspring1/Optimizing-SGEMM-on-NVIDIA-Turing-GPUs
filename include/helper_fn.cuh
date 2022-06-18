@@ -1,13 +1,18 @@
 #pragma once
 
+constexpr int FACTOR = 4;
+
 constexpr int MS = 32;
 constexpr int NS = 32;
 constexpr int KS = 32;
-constexpr int FACTOR = 4;
 
 constexpr int MSL = 64;
 constexpr int NSL = 64;
 constexpr int KSL = 16;
+
+constexpr int MSXL = 8;
+constexpr int NSXL = 8;
+constexpr int KSXL = 8;
 
 int ceilDiv(int m, int n) { return (m + n - 1) / n; }
 
