@@ -8,4 +8,4 @@
 #include "./include/kernel6_vectorize_load_store.cuh"
 #include "./include/kernel7_4x4_thread.cuh"
 #include "./include/kernel8_8x8_thread.cuh"
-#include "./include/kernel9.cuh"
+#include "./include/kernel9_4x8_warp_tiling.cuh"
