@@ -7,13 +7,13 @@
 // more workloads per thread. 8x8 micro kernel.
 // adopt vetorized load/store
 // 4x8 warp-level tiling for output matrix C
-// prefetching
-__global__ __launch_bounds__(256) void mysgemm_v10(int M, int N, int K,
+// double buffering
+__global__ __launch_bounds__(256) void mysgemm_v11(int M, int N, int K,
                                                    float alpha, float *A,
                                                    float *B, float beta,
                                                    float *C) {
-  __shared__ float smem_A[1024];
-  __shared__ float smem_B[1024];
+  __shared__ float smem_A[2][1024];
+  __shared__ float smem_B[2][1024];
 
   int lda = M, ldb = K, ldc = M;
   int tx = threadIdx.x;
@@ -38,6 +38,9 @@ __global__ __launch_bounds__(256) void mysgemm_v10(int M, int N, int K,
   B = &B[index(0, by_shift, ldb)];
   C = &C[index(bx_shift, by_shift, ldc)];
 
+  float *ptr_smem_A = (float *)smem_A;
+  float *ptr_smem_B = (float *)smem_B;
+
   Array a_vec[2][2];
   Array b_vec[2][2];
   Array c_vec[16];
@@ -53,20 +56,20 @@ __global__ __launch_bounds__(256) void mysgemm_v10(int M, int N, int K,
   pref_Av = vectorizeLoad(&A[index(row_a, col_a, lda)]);
   pref_Bv = vectorizeLoad(&B[index(row_b, col_b, ldb)]);
 
-  reinterpret_cast<Array *>(smem_A)[tx] = pref_Av;
+  reinterpret_cast<Array *>(ptr_smem_A)[tx] = pref_Av;
 
 #pragma unroll
   for (int offset = 0; offset < FACTOR; offset++) {
-    smem_B[smemFlipIndex(col_b, row_b + offset, shift)] = pref_Bv[offset];
+    ptr_smem_B[smemFlipIndex(col_b, row_b + offset, shift)] = pref_Bv[offset];
   }
   __syncthreads();
 
-  a_vec[0][0] = vectorizeLoad(&smem_A[smemFlipIndex(row_c, 0, shift)]);
-  a_vec[1][0] = vectorizeLoad(&smem_A[smemFlipIndex(row_c + 4, 0, shift)]);
-  b_vec[0][0] = vectorizeLoad(&smem_B[smemFlipIndex(col_c, 0, shift)]);
-  b_vec[1][0] = vectorizeLoad(&smem_B[smemFlipIndex(col_c + 4, 0, shift)]);
+  a_vec[0][0] = vectorizeLoad(&ptr_smem_A[smemFlipIndex(row_c, 0, shift)]);
+  a_vec[1][0] = vectorizeLoad(&ptr_smem_A[smemFlipIndex(row_c + 4, 0, shift)]);
+  b_vec[0][0] = vectorizeLoad(&ptr_smem_B[smemFlipIndex(col_c, 0, shift)]);
+  b_vec[1][0] = vectorizeLoad(&ptr_smem_B[smemFlipIndex(col_c + 4, 0, shift)]);
   for (int cta_k = 0; cta_k < K_upper; cta_k++) {
-    /*packing A and B into shared memory*/
+    // packing A and B into shared memory
     int inc = (cta_k + 1) % K_upper;
     ptr_A = A + inc * lda8;
     ptr_B = B + inc * 8;
@@ -81,13 +84,13 @@ __global__ __launch_bounds__(256) void mysgemm_v10(int M, int N, int K,
       int next_warp_k = (warp_k + 1) & 7;
 
       a_vec[0][next_buffer] =
-          vectorizeLoad(&smem_A[smemFlipIndex(row_c, next_warp_k, shift)]);
-      a_vec[1][next_buffer] =
-          vectorizeLoad(&smem_A[smemFlipIndex(row_c + 4, next_warp_k, shift)]);
+          vectorizeLoad(&ptr_smem_A[smemFlipIndex(row_c, next_warp_k, shift)]);
+      a_vec[1][next_buffer] = vectorizeLoad(
+          &ptr_smem_A[smemFlipIndex(row_c + 4, next_warp_k, shift)]);
       b_vec[0][next_buffer] =
-          vectorizeLoad(&smem_B[smemFlipIndex(col_c, next_warp_k, shift)]);
-      b_vec[1][next_buffer] =
-          vectorizeLoad(&smem_B[smemFlipIndex(col_c + 4, next_warp_k, shift)]);
+          vectorizeLoad(&ptr_smem_B[smemFlipIndex(col_c, next_warp_k, shift)]);
+      b_vec[1][next_buffer] = vectorizeLoad(
+          &ptr_smem_B[smemFlipIndex(col_c + 4, next_warp_k, shift)]);
 
       // each thread handles 8x8 tile of C
       // vectorization => 128-bit memop / 4 bytes (float) = 4 floats
@@ -106,20 +109,25 @@ __global__ __launch_bounds__(256) void mysgemm_v10(int M, int N, int K,
         }
       }
     }
-    __syncthreads();
+    // select smem buffer then multiply by 1024
+    int smem_offset = ((cta_k + 1) & 1) << 10;
+    ptr_smem_A = (float *)smem_A + smem_offset;
+    ptr_smem_B = (float *)smem_B + smem_offset;
 
-    reinterpret_cast<Array *>(smem_A)[tx] = pref_Av;
+    reinterpret_cast<Array *>(ptr_smem_A)[tx] = pref_Av;
 
 #pragma unroll
     for (int offset = 0; offset < FACTOR; offset++) {
-      smem_B[smemFlipIndex(col_b, row_b + offset, shift)] = pref_Bv[offset];
+      ptr_smem_B[smemFlipIndex(col_b, row_b + offset, shift)] = pref_Bv[offset];
     }
     __syncthreads();
 
-    a_vec[0][0] = vectorizeLoad(&smem_A[smemFlipIndex(row_c, 0, shift)]);
-    a_vec[1][0] = vectorizeLoad(&smem_A[smemFlipIndex(row_c + 4, 0, shift)]);
-    b_vec[0][0] = vectorizeLoad(&smem_B[smemFlipIndex(col_c, 0, shift)]);
-    b_vec[1][0] = vectorizeLoad(&smem_B[smemFlipIndex(col_c + 4, 0, shift)]);
+    a_vec[0][0] = vectorizeLoad(&ptr_smem_A[smemFlipIndex(row_c, 0, shift)]);
+    a_vec[1][0] =
+        vectorizeLoad(&ptr_smem_A[smemFlipIndex(row_c + 4, 0, shift)]);
+    b_vec[0][0] = vectorizeLoad(&ptr_smem_B[smemFlipIndex(col_c, 0, shift)]);
+    b_vec[1][0] =
+        vectorizeLoad(&ptr_smem_B[smemFlipIndex(col_c + 4, 0, shift)]);
   }
 
 #pragma unroll
@@ -134,11 +142,11 @@ __global__ __launch_bounds__(256) void mysgemm_v10(int M, int N, int K,
   }
 }
 
-void test_mysgemm_v10(int M, int N, int K, float alpha, float *A, float *B,
+void test_mysgemm_v11(int M, int N, int K, float alpha, float *A, float *B,
                       float beta, float *C) {
   cudaDeviceSynchronize();
   dim3 blockDim(256);
   dim3 gridDim(ceilDiv(M, 128), ceilDiv(N, 128));
-  mysgemm_v10<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+  mysgemm_v11<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   cudaDeviceSynchronize();
 }
